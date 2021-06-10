@@ -86,8 +86,13 @@ options:
   -p            print the definition of word to terminal and exit.
   -h, --help    show this help message and exit.
 
+keyword lookup:
+  while viewing dictionaries in vim, you can press shift+k
+  to look up the definition of the word under cursor.
+
 arguments after vimdict's options are passed directly to dict(1).
 see dict -h for more details.
+
 eof
 }
 
