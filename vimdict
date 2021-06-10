@@ -1,0 +1,95 @@
+#!/bin/sh
+# show definition of words in vim, using dict.
+
+main() {
+    ! command -v dict >/dev/null && echo install dict. >&2 && exit 1
+
+    while true; do case "$1" in
+        -e) editor="$2"; shift 2 ;;
+        -f) noedcheck=true; shift ;;
+        -h | --help) help; exit ;;
+        --) shift; break ;;
+        -*) bad_usage invalid option ;;
+         *) break ;;
+    esac; done
+
+    [ -z "$*" ] && bad_usage no word given
+    edcheck
+
+    $EDITOR -c "$(vimcmd)" -c 'set keywordprg=:Vimdict' -c "Vimdict $*"
+}
+
+# check if editor is vim/nvim.
+edcheck() {
+    echo "$EDITOR" | egrep -q 'vim|nvim' && return
+    [ "$noedcheck" = true ] && return
+    edhelp
+    exit 1
+}
+
+# print vim commands for syntax highlighting,
+# keywordprg,  etc.
+vimcmd() {
+cat << 'eof'
+
+    fu DictSyntax()
+        syn match dictName '^From.*$'
+        syn match dictWord '^  \w[^\\]\+'
+        syn match dictNum  '^ \{1,6}\d\+\.'
+        syn match dictExpr '\n *\n \{1,6}{[^{]\+}'
+        syn match dictNote '^ *Note:'
+        hi def link dictName Statement
+        hi def link dictWord Type
+        hi def link dictNum  Constant
+        hi def link dictExpr Constant
+        hi def link dictNote PreProc
+    endf
+
+    fu Vimdict(word)
+        exe 'e' a:word
+        exe 'r' '!echo' a:word '; dict --' a:word
+        norm ggdd
+        setlocal nomodified nomodifiable filetype=dict
+        call DictSyntax()
+    endf
+
+    command -nargs=* Vimdict silent! call Vimdict(<q-args>)
+
+eof
+}
+
+bad_usage() {
+    echo vimdict: "$@". Try -h or --help. >&2
+    exit 1
+}
+
+edhelp() {
+    echo "vimdict: your \$EDITOR is set to \"$EDITOR\"; but vimdict"
+    echo "only works with vim, nvim, or other vim-compatible editors."
+    echo
+    echo "either set \$EDITOR to vim or nvim,"
+    echo "or specify a vim-compatible editor with the -e option,"
+    echo "or use the -f option to continue with \"$EDITOR\" anyway."
+}
+
+help() {
+cat << 'eof'
+vimdict uses dict(1) to get word definitions
+and shows them in vim.
+
+usage:
+  vimdict [options] [--] [dict options] [--] [word]
+
+options:
+  -e <editor>   specify editor to use
+  -f            don't check wether editor is vim/nvim.
+  -p            print the definition of word to terminal and exit.
+  -h, --help    show this help message and exit.
+
+arguments after vimdict's options are passed directly to dict(1).
+see dict -h for more details.
+eof
+}
+
+main "$@"
+exit
